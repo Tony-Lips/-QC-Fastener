@@ -1,0 +1,928 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+<meta name="theme-color" content="#1a2744"/>
+<meta name="mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<title>QC Fastener — Контроль крепежа</title>
+<link rel="manifest" href="manifest.json"/>
+<style>
+  :root {
+    --bg: #0f1624;
+    --surface: #1a2744;
+    --surface2: #223060;
+    --accent: #3b7cf8;
+    --accent2: #e63946;
+    --ok: #2ec4b6;
+    --warn: #f4a261;
+    --text: #e8eaf6;
+    --text2: #8a9bc4;
+    --border: #2d3f6e;
+    --radius: 12px;
+    --font: 'Segoe UI', system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: var(--font); min-height: 100vh; overflow-x: hidden; }
+
+  /* ─── NAV ─── */
+  .nav { background: var(--surface); border-bottom: 1px solid var(--border); padding: 12px 16px; display: flex; align-items: center; gap: 12px; position: sticky; top: 0; z-index: 100; }
+  .nav-logo { font-weight: 700; font-size: 15px; letter-spacing: .5px; color: var(--accent); }
+  .nav-logo span { color: var(--text2); font-weight: 400; }
+  .nav-back { background: none; border: none; color: var(--text2); font-size: 22px; cursor: pointer; padding: 4px; line-height: 1; }
+  .nav-title { font-size: 14px; font-weight: 600; flex: 1; }
+
+  /* ─── SCREENS ─── */
+  .screen { display: none; padding: 16px; max-width: 640px; margin: 0 auto; }
+  .screen.active { display: block; }
+
+  /* ─── CARDS ─── */
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; margin-bottom: 12px; }
+  .card-title { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--text2); margin-bottom: 10px; }
+
+  /* ─── BUTTONS ─── */
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 12px 20px; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; border: none; transition: opacity .15s, transform .1s; }
+  .btn:active { transform: scale(.97); }
+  .btn-primary { background: var(--accent); color: #fff; width: 100%; }
+  .btn-danger { background: var(--accent2); color: #fff; width: 100%; }
+  .btn-ok { background: var(--ok); color: #0f1624; width: 100%; }
+  .btn-outline { background: transparent; color: var(--text); border: 1px solid var(--border); }
+  .btn-sm { padding: 7px 14px; font-size: 12px; }
+
+  /* ─── FORM ─── */
+  label { display: block; font-size: 12px; color: var(--text2); margin-bottom: 5px; font-weight: 600; }
+  input, select, textarea { width: 100%; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; color: var(--text); padding: 10px 12px; font-size: 14px; font-family: var(--font); margin-bottom: 14px; outline: none; transition: border-color .15s; }
+  input:focus, select:focus, textarea:focus { border-color: var(--accent); }
+  select option { background: var(--surface); }
+  textarea { resize: vertical; min-height: 70px; }
+
+  /* ─── SCAN AREA ─── */
+  .scan-drop { border: 2px dashed var(--border); border-radius: var(--radius); padding: 32px 16px; text-align: center; cursor: pointer; transition: border-color .2s; position: relative; }
+  .scan-drop:hover, .scan-drop.drag { border-color: var(--accent); }
+  .scan-drop input[type=file] { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+  .scan-drop .icon { font-size: 40px; margin-bottom: 8px; }
+  .scan-drop p { color: var(--text2); font-size: 13px; }
+
+  /* ─── PREVIEW ─── */
+  #scan-preview { width: 100%; border-radius: 8px; display: none; margin-top: 12px; }
+
+  /* ─── CHECKLIST ITEMS ─── */
+  .checklist-item { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; margin-bottom: 10px; }
+  .ci-header { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .ci-num { background: var(--surface2); border-radius: 6px; padding: 4px 10px; font-size: 12px; font-weight: 700; color: var(--text2); }
+  .ci-name { font-size: 14px; font-weight: 600; flex: 1; }
+  .ci-status { display: flex; gap: 6px; }
+  .status-btn { padding: 6px 14px; border-radius: 6px; font-size: 12px; font-weight: 700; border: 2px solid transparent; cursor: pointer; transition: all .15s; }
+  .status-btn.ok { background: transparent; border-color: var(--ok); color: var(--ok); }
+  .status-btn.ok.active { background: var(--ok); color: #0f1624; }
+  .status-btn.fail { background: transparent; border-color: var(--accent2); color: var(--accent2); }
+  .status-btn.fail.active { background: var(--accent2); color: #fff; }
+  .defect-section { display: none; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border); }
+  .defect-section.show { display: block; }
+
+  /* ─── ISO BADGE ─── */
+  .iso-badge { background: var(--surface2); border-radius: 8px; padding: 10px 14px; margin-bottom: 14px; display: flex; justify-content: space-between; align-items: center; }
+  .iso-label { font-size: 11px; color: var(--text2); font-weight: 600; text-transform: uppercase; letter-spacing: .5px; }
+  .iso-value { font-size: 20px; font-weight: 700; color: var(--accent); }
+  .iso-meta { font-size: 11px; color: var(--text2); text-align: right; }
+
+  /* ─── DEFECT TAGS ─── */
+  .defect-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+  .defect-tag { padding: 5px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; cursor: pointer; border: 1.5px solid var(--border); color: var(--text2); transition: all .15s; }
+  .defect-tag.sel { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .defect-tag.geom { border-color: #f4a261; }
+  .defect-tag.geom.sel { background: #f4a261; color: #0f1624; }
+  .defect-tag.surf { border-color: #e63946; }
+  .defect-tag.surf.sel { background: #e63946; color: #fff; }
+  .defect-tag.mark { border-color: #9b5de5; }
+  .defect-tag.mark.sel { background: #9b5de5; color: #fff; }
+  .defect-tag.pack { border-color: #2ec4b6; }
+  .defect-tag.pack.sel { background: #2ec4b6; color: #0f1624; }
+
+  /* ─── PHOTO GRID ─── */
+  .photo-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 6px; margin-top: 8px; }
+  .photo-thumb { aspect-ratio: 1; border-radius: 6px; overflow: hidden; position: relative; background: var(--surface2); }
+  .photo-thumb img { width: 100%; height: 100%; object-fit: cover; }
+  .photo-del { position: absolute; top: 3px; right: 3px; background: rgba(0,0,0,.6); border: none; color: #fff; border-radius: 50%; width: 22px; height: 22px; cursor: pointer; font-size: 13px; display: flex; align-items: center; justify-content: center; }
+  .photo-add { aspect-ratio: 1; border-radius: 6px; border: 2px dashed var(--border); display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; gap: 4px; color: var(--text2); font-size: 11px; position: relative; }
+  .photo-add input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+
+  /* ─── RESULT / PROGRESS ─── */
+  .progress-bar { background: var(--surface2); border-radius: 99px; height: 6px; overflow: hidden; margin-top: 6px; }
+  .progress-fill { height: 100%; background: var(--accent); border-radius: 99px; transition: width .3s; }
+  .stat-row { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 4px; }
+  .stat-row .val { font-weight: 700; }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 99px; font-size: 11px; font-weight: 700; }
+  .badge-ok { background: rgba(46,196,182,.15); color: var(--ok); }
+  .badge-fail { background: rgba(230,57,70,.15); color: var(--accent2); }
+
+  /* ─── SPINNER ─── */
+  .spinner { width: 28px; height: 28px; border: 3px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin .7s linear infinite; margin: 20px auto; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loading-msg { text-align: center; color: var(--text2); font-size: 13px; margin-top: 8px; }
+
+  /* ─── AI output box ─── */
+  .ai-box { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 12px; font-size: 13px; color: var(--text2); white-space: pre-wrap; min-height: 40px; margin-bottom: 10px; }
+
+  /* ─── STEP INDICATOR ─── */
+  .steps { display: flex; gap: 0; margin-bottom: 20px; }
+  .step { flex: 1; text-align: center; padding: 8px 4px; font-size: 11px; font-weight: 600; color: var(--text2); border-bottom: 2px solid var(--border); transition: all .2s; }
+  .step.active { color: var(--accent); border-bottom-color: var(--accent); }
+  .step.done { color: var(--ok); border-bottom-color: var(--ok); }
+
+  /* ─── TOAST ─── */
+  .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 10px 18px; font-size: 13px; z-index: 999; opacity: 0; pointer-events: none; transition: opacity .3s; white-space: nowrap; }
+  .toast.show { opacity: 1; }
+
+  /* ─── HOME HERO ─── */
+  .hero { text-align: center; padding: 32px 16px 20px; }
+  .hero .logo-big { font-size: 48px; margin-bottom: 12px; }
+  .hero h1 { font-size: 22px; font-weight: 700; margin-bottom: 6px; }
+  .hero p { color: var(--text2); font-size: 14px; line-height: 1.5; margin-bottom: 24px; }
+  .home-actions { display: flex; flex-direction: column; gap: 10px; }
+
+  /* ─── SECTION DIVIDER ─── */
+  .divider { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
+
+  .tag-legend { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; font-size: 11px; }
+  .legend-item { display: flex; align-items: center; gap: 4px; color: var(--text2); }
+  .legend-dot { width: 8px; height: 8px; border-radius: 50%; }
+
+  .ci-qty { font-size: 12px; color: var(--text2); margin-bottom: 8px; }
+</style>
+</head>
+<body>
+
+<!-- ════════════════ HOME ════════════════ -->
+<div id="screen-home" class="screen active">
+  <div style="background:var(--surface);border-bottom:1px solid var(--border);padding:12px 16px;display:flex;align-items:center;gap:10px;">
+    <span style="font-size:22px;">🔩</span>
+    <span class="nav-logo">QC Fastener <span>v1.0</span></span>
+  </div>
+  <div style="max-width:640px;margin:0 auto;padding:16px;">
+    <div class="hero">
+      <div class="logo-big">🔩</div>
+      <h1>Контроль качества крепежа</h1>
+      <p>Сканируйте Акт приёмочного контроля, выявляйте дефекты по ISO 3269 и формируйте Акт несоответствия одним нажатием.</p>
+    </div>
+    <div class="home-actions">
+      <button class="btn btn-primary" onclick="goTo('screen-scan')">📷 Сканировать акт контроля</button>
+      <button class="btn btn-outline" onclick="goTo('screen-history')" id="btn-history">📋 История актов</button>
+    </div>
+    <hr class="divider"/>
+    <div class="card">
+      <div class="card-title">Как это работает</div>
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        <div style="display:flex;gap:12px;align-items:flex-start;">
+          <span style="background:var(--accent);color:#fff;border-radius:50%;width:24px;height:24px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0;">1</span>
+          <div><div style="font-size:13px;font-weight:600;">Сфотографируйте акт</div><div style="font-size:12px;color:var(--text2);">ИИ распознаёт товары, коды и отметки дефектов</div></div>
+        </div>
+        <div style="display:flex;gap:12px;align-items:flex-start;">
+          <span style="background:var(--accent);color:#fff;border-radius:50%;width:24px;height:24px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0;">2</span>
+          <div><div style="font-size:13px;font-weight:600;">Уточните дефекты</div><div style="font-size:12px;color:var(--text2);">Выберите категорию, добавьте фото дефекта</div></div>
+        </div>
+        <div style="display:flex;gap:12px;align-items:flex-start;">
+          <span style="background:var(--accent);color:#fff;border-radius:50%;width:24px;height:22px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0;">3</span>
+          <div><div style="font-size:13px;font-weight:600;">Скачайте Акт несоответствия</div><div style="font-size:12px;color:var(--text2);">Готовый DOCX по шаблону ООО «ОПМ» с фото</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════ SCAN ════════════════ -->
+<div id="screen-scan" class="screen">
+  <div class="nav">
+    <button class="nav-back" onclick="goTo('screen-home')">←</button>
+    <span class="nav-title">Шаг 1 — Сканирование акта</span>
+  </div>
+  <div style="max-width:640px;margin:0 auto;">
+    <div class="steps">
+      <div class="step active" id="stp1">📷 Скан</div>
+      <div class="step" id="stp2">✏️ Дефекты</div>
+      <div class="step" id="stp3">📄 Акт</div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Загрузите фото акта приёмочного контроля</div>
+      <div class="scan-drop" id="scan-drop">
+        <input type="file" accept="image/*" capture="environment" id="scan-file" onchange="handleScanFile(this)"/>
+        <div class="icon">📄</div>
+        <p>Нажмите, чтобы сфотографировать или выбрать файл</p>
+        <p style="margin-top:6px;font-size:11px;">JPG, PNG, HEIC</p>
+      </div>
+      <img id="scan-preview"/>
+    </div>
+
+    <div class="card" id="meta-card" style="display:none;">
+      <div class="card-title">Реквизиты поставки</div>
+      <label>Поставщик</label>
+      <input id="f-supplier" placeholder="ООО «КРЕП-КОМП»"/>
+      <label>Номер заказа поставщику</label>
+      <input id="f-order" placeholder="УТФ00002960"/>
+      <label>Дата поставки</label>
+      <input id="f-date" type="date"/>
+      <label>Склад</label>
+      <input id="f-warehouse" placeholder="Склад СПБ"/>
+      <label>Покупатель</label>
+      <input id="f-buyer" value="ООО «ОПМ»"/>
+    </div>
+
+    <div id="ai-section" style="display:none;">
+      <div class="card">
+        <div class="card-title">🤖 Распознавание ИИ</div>
+        <div id="ai-status" class="loading-msg"></div>
+        <div class="spinner" id="ai-spinner" style="display:none;"></div>
+        <div id="ai-result" class="ai-box" style="display:none;"></div>
+      </div>
+    </div>
+
+    <button class="btn btn-primary" id="btn-analyze" style="display:none;" onclick="analyzeImage()">🤖 Распознать акт (ИИ)</button>
+    <button class="btn btn-ok" id="btn-next-defects" style="display:none;margin-top:10px;" onclick="goToDefects()">Далее: отметить дефекты →</button>
+  </div>
+</div>
+
+<!-- ════════════════ DEFECTS ════════════════ -->
+<div id="screen-defects" class="screen">
+  <div class="nav">
+    <button class="nav-back" onclick="goTo('screen-scan')">←</button>
+    <span class="nav-title">Шаг 2 — Дефекты по позициям</span>
+  </div>
+  <div style="max-width:640px;margin:0 auto;">
+    <div class="steps">
+      <div class="step done" id="stp1b">📷 Скан</div>
+      <div class="step active" id="stp2b">✏️ Дефекты</div>
+      <div class="step" id="stp3b">📄 Акт</div>
+    </div>
+
+    <!-- ISO 3269 info -->
+    <div class="card" id="iso-card">
+      <div class="card-title">📐 Выборка ISO 3269</div>
+      <div id="iso-info"></div>
+    </div>
+
+    <div class="tag-legend">
+      <div class="legend-item"><div class="legend-dot" style="background:#f4a261;"></div> Геометрия</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#e63946;"></div> Поверхность</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#9b5de5;"></div> Маркировка</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#2ec4b6;"></div> Упаковка</div>
+    </div>
+
+    <div id="items-list"></div>
+
+    <button class="btn btn-primary" onclick="goToReport()" style="margin-top:8px;" id="btn-generate">📄 Сформировать акт несоответствия</button>
+  </div>
+</div>
+
+<!-- ════════════════ REPORT ════════════════ -->
+<div id="screen-report" class="screen">
+  <div class="nav">
+    <button class="nav-back" onclick="goTo('screen-defects')">←</button>
+    <span class="nav-title">Шаг 3 — Акт несоответствия</span>
+  </div>
+  <div style="max-width:640px;margin:0 auto;">
+    <div class="steps">
+      <div class="step done">📷 Скан</div>
+      <div class="step done">✏️ Дефекты</div>
+      <div class="step active">📄 Акт</div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Сводка</div>
+      <div id="report-summary"></div>
+    </div>
+
+    <div id="report-items-preview"></div>
+
+    <div class="card">
+      <div class="card-title">Комиссия</div>
+      <label>Начальник склада</label>
+      <input id="c-head" placeholder="Морозов А.Л."/>
+      <label>Руководитель ОТК</label>
+      <input id="c-otk" placeholder=""/>
+      <label>Специалист по претензиям</label>
+      <input id="c-claim" placeholder=""/>
+      <label>Номер акта</label>
+      <input id="act-num" placeholder="auto"/>
+      <label>Место составления</label>
+      <input id="act-place" value="194292, Санкт-Петербург г, 5-й Верхний пер, дом № 17 литера А, оф.211"/>
+    </div>
+
+    <button class="btn btn-primary" onclick="generateDocx()" id="btn-docx">⬇️ Скачать DOCX</button>
+    <div id="docx-status" style="text-align:center;color:var(--text2);font-size:13px;margin-top:10px;"></div>
+    <button class="btn btn-outline" onclick="saveToHistory()" style="margin-top:10px;">💾 Сохранить в историю</button>
+  </div>
+</div>
+
+<!-- ════════════════ HISTORY ════════════════ -->
+<div id="screen-history" class="screen">
+  <div class="nav">
+    <button class="nav-back" onclick="goTo('screen-home')">←</button>
+    <span class="nav-title">История актов</span>
+  </div>
+  <div style="max-width:640px;margin:0 auto;" id="history-list">
+    <div style="text-align:center;color:var(--text2);padding:40px;font-size:13px;">Нет сохранённых актов</div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<!-- docx lib -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/docx/8.5.0/docx.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+
+<script>
+// ─── STATE ───────────────────────────────────────────────────────
+const state = {
+  imageB64: null,
+  imageType: 'image/jpeg',
+  supplier: '', order: '', date: '', warehouse: '', buyer: 'ООО «ОПМ»',
+  items: [], // [{code, name, qty, unit, weight, status:'ok'|'fail'|null, defects:[], note:'', photos:[b64]}]
+  isoSample: 0,
+  aqlLevel: 'II',
+  actNum: null,
+};
+
+// ─── DEFECT CATALOGUE (ISO 8992 / ГОСТ) ─────────────────────────
+const DEFECT_CATS = {
+  geom: {
+    label: 'Геометрия / размеры',
+    cls: 'geom',
+    items: ['Диаметр резьбы вне допуска','Шаг резьбы не соответствует','Длина болта вне поля допуска','Высота головки вне допуска','Проходит непроходной калибр','Не проходит проходной калибр','Несоответствие размера под ключ']
+  },
+  surf: {
+    label: 'Поверхность / покрытие',
+    cls: 'surf',
+    items: ['Ржавчина / коррозия','Задиры, царапины','Трещины','Недостаточная толщина покрытия','Отслоение цинка','Пузыри покрытия','Отсутствие покрытия']
+  },
+  mark: {
+    label: 'Маркировка',
+    cls: 'mark',
+    items: ['Нет клейма производителя','Нечёткое клеймо','Неверный класс прочности','Отсутствует маркировка партии']
+  },
+  pack: {
+    label: 'Упаковка / документация',
+    cls: 'pack',
+    items: ['Повреждена упаковка','Неверная фасовка (кол-во)','Отсутствует паспорт / сертификат','Неверная маркировка упаковки']
+  },
+};
+
+// ─── ISO 3269 TABLE (AQL 1.0) ────────────────────────────────────
+function calcISO3269(lotSize) {
+  // Single sampling, AQL 1.0 (critical), normal inspection level II
+  const table = [
+    [2,8,2,0,1],
+    [9,15,3,0,1],
+    [16,25,5,0,1],
+    [26,50,8,0,1],
+    [51,90,13,0,1],
+    [91,150,20,0,1],
+    [151,280,32,0,1],
+    [281,500,50,0,1],
+    [501,1200,80,0,1],
+    [1201,3200,125,0,1],
+    [3201,10000,200,1,2],
+    [10001,35000,315,1,2],
+    [35001,150000,500,2,3],
+    [150001,500000,800,3,4],
+    [500001,Infinity,1250,5,6],
+  ];
+  for (const [lo,hi,n,ac,re] of table) {
+    if (lotSize >= lo && lotSize <= hi) return {n, ac, re};
+  }
+  return {n: lotSize, ac: 0, re: 1};
+}
+
+// ─── NAVIGATION ──────────────────────────────────────────────────
+function goTo(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  window.scrollTo(0,0);
+  if (id === 'screen-history') renderHistory();
+}
+
+// ─── FILE HANDLING ───────────────────────────────────────────────
+function handleScanFile(input) {
+  const file = input.files[0];
+  if (!file) return;
+  state.imageType = file.type || 'image/jpeg';
+  const reader = new FileReader();
+  reader.onload = e => {
+    const b64 = e.target.result.split(',')[1];
+    state.imageB64 = b64;
+    const prev = document.getElementById('scan-preview');
+    prev.src = e.target.result;
+    prev.style.display = 'block';
+    document.getElementById('meta-card').style.display = 'block';
+    document.getElementById('ai-section').style.display = 'block';
+    document.getElementById('btn-analyze').style.display = 'block';
+    // pre-fill date
+    document.getElementById('f-date').value = new Date().toISOString().split('T')[0];
+  };
+  reader.readAsDataURL(file);
+}
+
+// ─── AI ANALYSIS ─────────────────────────────────────────────────
+async function analyzeImage() {
+  const btn = document.getElementById('btn-analyze');
+  btn.disabled = true;
+  document.getElementById('ai-spinner').style.display = 'block';
+  document.getElementById('ai-status').textContent = 'Распознаю акт с помощью ИИ…';
+  document.getElementById('ai-result').style.display = 'none';
+
+  const prompt = `Ты — система распознавания актов приёмочного контроля крепёжных изделий.
+На изображении — акт приёмочного контроля на русском языке.
+Извлеки данные и верни ТОЛЬКО JSON без лишнего текста:
+{
+  "supplier": "...",
+  "order": "...",
+  "warehouse": "...",
+  "items": [
+    {"code":"...","name":"...","qty":0,"unit":"шт","weight":0,"hasDefect":true,"defectNote":"..."}
+  ]
+}
+hasDefect=true если в строке стоит X или другая отметка несоответствия.
+defectNote — рукописные примечания по этому товару если есть.
+Если данных нет — пустая строка или 0.`;
+
+  try {
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 1000,
+        messages: [{
+          role: 'user',
+          content: [
+            {type:'image', source:{type:'base64', media_type: state.imageType, data: state.imageB64}},
+            {type:'text', text: prompt}
+          ]
+        }]
+      })
+    });
+    const data = await resp.json();
+    const raw = data.content?.map(c => c.text||'').join('');
+    // parse JSON
+    const match = raw.match(/\{[\s\S]*\}/);
+    if (!match) throw new Error('Не удалось разобрать ответ');
+    const parsed = JSON.parse(match[0]);
+
+    // fill state
+    if (parsed.supplier) { state.supplier = parsed.supplier; document.getElementById('f-supplier').value = parsed.supplier; }
+    if (parsed.order) { state.order = parsed.order; document.getElementById('f-order').value = parsed.order; }
+    if (parsed.warehouse) { state.warehouse = parsed.warehouse; document.getElementById('f-warehouse').value = parsed.warehouse; }
+
+    state.items = (parsed.items||[]).map((it,i) => ({
+      id: i,
+      code: it.code||'',
+      name: it.name||'Позиция '+(i+1),
+      qty: Number(it.qty)||0,
+      unit: it.unit||'шт',
+      weight: Number(it.weight)||0,
+      status: it.hasDefect ? 'fail' : null,
+      defects: [],
+      note: it.defectNote||'',
+      photos: [],
+    }));
+
+    document.getElementById('ai-result').textContent = `Распознано позиций: ${state.items.length}\n`+
+      state.items.map(it=>`• ${it.name} (${it.qty} ${it.unit})${it.status==='fail'?' ⚠️':''}`).join('\n')+
+      (parsed.items?.[0]?.defectNote ? '\n\nПримечание: '+parsed.items[0].defectNote : '');
+    document.getElementById('ai-result').style.display = 'block';
+    document.getElementById('ai-status').textContent = '✅ Распознано успешно';
+    document.getElementById('btn-next-defects').style.display = 'block';
+
+  } catch(e) {
+    document.getElementById('ai-status').textContent = '⚠️ Ошибка ИИ. Заполните вручную.';
+    document.getElementById('ai-result').textContent = e.message;
+    document.getElementById('ai-result').style.display = 'block';
+    // fallback: add 1 blank item
+    if (!state.items.length) {
+      state.items = [{id:0,code:'',name:'',qty:0,unit:'шт',weight:0,status:null,defects:[],note:'',photos:[]}];
+    }
+    document.getElementById('btn-next-defects').style.display = 'block';
+  } finally {
+    document.getElementById('ai-spinner').style.display = 'none';
+    btn.disabled = false;
+  }
+}
+
+// ─── GO TO DEFECTS ───────────────────────────────────────────────
+function goToDefects() {
+  // sync meta fields
+  state.supplier = document.getElementById('f-supplier').value;
+  state.order = document.getElementById('f-order').value;
+  state.date = document.getElementById('f-date').value;
+  state.warehouse = document.getElementById('f-warehouse').value;
+  state.buyer = document.getElementById('f-buyer').value;
+
+  // ensure at least 1 item
+  if (!state.items.length) {
+    state.items = [{id:0,code:'',name:'',qty:0,unit:'шт',weight:0,status:null,defects:[],note:'',photos:[]}];
+  }
+
+  renderISO();
+  renderItems();
+  goTo('screen-defects');
+}
+
+function renderISO() {
+  // total qty of all items
+  const total = state.items.reduce((s,it)=>s+(Number(it.qty)||0),0);
+  if (!total) { document.getElementById('iso-card').style.display='none'; return; }
+  const {n, ac, re} = calcISO3269(total);
+  state.isoSample = n;
+  document.getElementById('iso-info').innerHTML = `
+    <div class="iso-badge">
+      <div><div class="iso-label">Объём партии</div><div class="iso-value">${total.toLocaleString('ru')}</div><div class="iso-meta">шт.</div></div>
+      <div style="text-align:right"><div class="iso-label">Выборка ISO 3269</div><div class="iso-value">${n}</div><div class="iso-meta">AQL 1.0 · Уровень II</div></div>
+    </div>
+    <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text2);margin-top:4px;">
+      <span>Приёмочное число (Ac): <b style="color:var(--ok)">${ac}</b></span>
+      <span>Браковочное число (Re): <b style="color:var(--accent2)">${re}</b></span>
+    </div>`;
+}
+
+// ─── RENDER ITEMS ─────────────────────────────────────────────────
+function renderItems() {
+  const list = document.getElementById('items-list');
+  list.innerHTML = '';
+  state.items.forEach((item, idx) => {
+    const div = document.createElement('div');
+    div.className = 'checklist-item';
+    div.id = `ci-${idx}`;
+    div.innerHTML = buildItemHTML(item, idx);
+    list.appendChild(div);
+  });
+  // add new item button
+  const addBtn = document.createElement('button');
+  addBtn.className = 'btn btn-outline';
+  addBtn.style.width='100%';
+  addBtn.style.marginBottom='16px';
+  addBtn.textContent = '+ Добавить позицию';
+  addBtn.onclick = () => {
+    state.items.push({id:state.items.length, code:'', name:'', qty:0, unit:'шт', weight:0, status:null, defects:[], note:'', photos:[]});
+    renderItems();
+  };
+  list.appendChild(addBtn);
+}
+
+function buildItemHTML(item, idx) {
+  return `
+  <div class="ci-header">
+    <span class="ci-num">${idx+1}</span>
+    <input style="flex:1;margin:0;padding:8px;font-size:13px;" value="${esc(item.name)}" placeholder="Наименование товара" oninput="state.items[${idx}].name=this.value"/>
+    <div class="ci-status">
+      <button class="status-btn ok ${item.status==='ok'?'active':''}" onclick="setStatus(${idx},'ok')">✓ OK</button>
+      <button class="status-btn fail ${item.status==='fail'?'active':''}" onclick="setStatus(${idx},'fail')">✗ Брак</button>
+    </div>
+  </div>
+  <div style="display:flex;gap:8px;margin-bottom:8px;">
+    <div style="flex:1"><label style="margin-bottom:3px;">Код</label><input value="${esc(item.code)}" placeholder="Код" style="margin:0;padding:7px;font-size:12px;" oninput="state.items[${idx}].code=this.value"/></div>
+    <div style="flex:1"><label style="margin-bottom:3px;">Кол-во</label><input type="number" value="${item.qty||''}" placeholder="0" style="margin:0;padding:7px;font-size:12px;" oninput="state.items[${idx}].qty=+this.value;renderISO()"/></div>
+    <div style="flex:1"><label style="margin-bottom:3px;">Ед.</label>
+      <select style="margin:0;padding:7px;font-size:12px;" onchange="state.items[${idx}].unit=this.value">
+        ${['шт','кг','уп','м'].map(u=>`<option ${item.unit===u?'selected':''}>${u}</option>`).join('')}
+      </select>
+    </div>
+  </div>
+  <div class="defect-section ${item.status==='fail'?'show':''}" id="def-${idx}">
+    <div class="card-title" style="margin-bottom:8px;">Классификация дефектов</div>
+    ${Object.entries(DEFECT_CATS).map(([key,cat])=>`
+      <div style="margin-bottom:10px;">
+        <div style="font-size:11px;color:var(--text2);font-weight:600;margin-bottom:5px;">${cat.label}</div>
+        <div class="defect-tags">
+          ${cat.items.map(d=>`<span class="defect-tag ${cat.cls} ${(item.defects||[]).includes(d)?'sel':''}" onclick="toggleDefect(${idx},'${d.replace(/'/g,"\\'")}',this)">${d}</span>`).join('')}
+        </div>
+      </div>
+    `).join('')}
+    <label>Примечание / описание дефекта</label>
+    <textarea placeholder="Например: проходит непроходной калибр, отсутствует клеймо производителя" oninput="state.items[${idx}].note=this.value">${esc(item.note)}</textarea>
+    <label>Фото дефектов</label>
+    <div class="photo-grid" id="photos-${idx}">
+      ${(item.photos||[]).map((p,pi)=>`
+        <div class="photo-thumb">
+          <img src="${p}" loading="lazy"/>
+          <button class="photo-del" onclick="removePhoto(${idx},${pi})">✕</button>
+        </div>
+      `).join('')}
+      <div class="photo-add">
+        <input type="file" accept="image/*" capture="environment" onchange="addPhoto(${idx},this)"/>
+        <span style="font-size:22px;">📷</span>
+        <span>Добавить фото</span>
+      </div>
+    </div>
+  </div>`;
+}
+
+function setStatus(idx, status) {
+  state.items[idx].status = status;
+  const ci = document.getElementById(`ci-${idx}`);
+  ci.querySelectorAll('.status-btn').forEach(b => b.classList.remove('active'));
+  ci.querySelector(`.status-btn.${status}`).classList.add('active');
+  const ds = document.getElementById(`def-${idx}`);
+  if (status === 'fail') ds.classList.add('show');
+  else ds.classList.remove('show');
+}
+
+function toggleDefect(idx, defect, el) {
+  const arr = state.items[idx].defects;
+  const i = arr.indexOf(defect);
+  if (i>=0) arr.splice(i,1); else arr.push(defect);
+  el.classList.toggle('sel');
+}
+
+function addPhoto(idx, input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    state.items[idx].photos.push(e.target.result);
+    // re-render photos grid only
+    const grid = document.getElementById(`photos-${idx}`);
+    const item = state.items[idx];
+    grid.innerHTML = (item.photos||[]).map((p,pi)=>`
+      <div class="photo-thumb">
+        <img src="${p}" loading="lazy"/>
+        <button class="photo-del" onclick="removePhoto(${idx},${pi})">✕</button>
+      </div>
+    `).join('') + `<div class="photo-add"><input type="file" accept="image/*" capture="environment" onchange="addPhoto(${idx},this)"/><span style="font-size:22px;">📷</span><span>Добавить фото</span></div>`;
+    showToast('Фото добавлено');
+  };
+  reader.readAsDataURL(file);
+}
+
+function removePhoto(idx, pi) {
+  state.items[idx].photos.splice(pi,1);
+  const grid = document.getElementById(`photos-${idx}`);
+  const item = state.items[idx];
+  grid.innerHTML = (item.photos||[]).map((p,pi2)=>`
+    <div class="photo-thumb">
+      <img src="${p}" loading="lazy"/>
+      <button class="photo-del" onclick="removePhoto(${idx},${pi2})">✕</button>
+    </div>
+  `).join('') + `<div class="photo-add"><input type="file" accept="image/*" capture="environment" onchange="addPhoto(${idx},this)"/><span style="font-size:22px;">📷</span><span>Добавить фото</span></div>`;
+}
+
+// ─── REPORT SCREEN ───────────────────────────────────────────────
+function goToReport() {
+  const failed = state.items.filter(it=>it.status==='fail');
+  if (!failed.length) { showToast('Нет позиций с отклонениями'); return; }
+
+  // summary
+  const total = state.items.reduce((s,it)=>s+(Number(it.qty)||0),0);
+  document.getElementById('report-summary').innerHTML = `
+    <div class="stat-row"><span>Позиций всего</span><span class="val">${state.items.length}</span></div>
+    <div class="stat-row"><span>С отклонениями</span><span class="val" style="color:var(--accent2)">${failed.length}</span></div>
+    <div class="stat-row"><span>Объём партии</span><span class="val">${total.toLocaleString('ru')} шт.</span></div>
+    <div class="stat-row"><span>Выборка ISO 3269</span><span class="val">${state.isoSample} шт.</span></div>
+    <div class="stat-row"><span>Поставщик</span><span class="val">${state.supplier||'—'}</span></div>
+    <div class="stat-row"><span>Заказ</span><span class="val">${state.order||'—'}</span></div>`;
+
+  // items preview
+  const prev = document.getElementById('report-items-preview');
+  prev.innerHTML = failed.map((it,i)=>`
+    <div class="card" style="border-color:var(--accent2);">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+        <span style="font-weight:700;">${it.name}</span>
+        <span class="badge badge-fail">Несоответствие</span>
+      </div>
+      <div style="font-size:12px;color:var(--text2);margin-bottom:6px;">${it.qty} ${it.unit}${it.code?' · '+it.code:''}</div>
+      ${it.defects.length ? `<div style="font-size:12px;margin-bottom:6px;"><b>Дефекты:</b> ${it.defects.join(', ')}</div>` : ''}
+      ${it.note ? `<div style="font-size:12px;color:var(--text2);">${it.note}</div>` : ''}
+      ${it.photos.length ? `<div style="font-size:11px;color:var(--text2);margin-top:6px;">📷 ${it.photos.length} фото</div>` : ''}
+    </div>
+  `).join('');
+
+  // auto act number
+  const existing = JSON.parse(localStorage.getItem('qc-history')||'[]');
+  document.getElementById('act-num').value = String(existing.length+1).padStart(4,'0');
+  document.getElementById('c-head').value = 'Морозов А.Л.';
+
+  goTo('screen-report');
+}
+
+// ─── DOCX GENERATION ─────────────────────────────────────────────
+async function generateDocx() {
+  const btn = document.getElementById('btn-docx');
+  btn.disabled = true;
+  const status = document.getElementById('docx-status');
+  status.textContent = '⏳ Формирую документ…';
+
+  try {
+    const { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell,
+            AlignmentType, BorderStyle, WidthType, ShadingType, VerticalAlign,
+            HeadingLevel, ImageRun } = docx;
+
+    const failed = state.items.filter(it=>it.status==='fail');
+    const actNum = document.getElementById('act-num').value || '0001';
+    const place = document.getElementById('act-place').value;
+    const cHead = document.getElementById('c-head').value;
+    const cOtk = document.getElementById('c-otk').value;
+    const cClaim = document.getElementById('c-claim').value;
+    const dateStr = state.date ? new Date(state.date).toLocaleDateString('ru-RU') : new Date().toLocaleDateString('ru-RU');
+    const total = state.items.reduce((s,it)=>s+(Number(it.qty)||0),0);
+
+    const border = { style: BorderStyle.SINGLE, size: 1, color: '999999' };
+    const borders = { top:border, bottom:border, left:border, right:border };
+    const noBorder = { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' };
+    const noBorders = {top:noBorder,bottom:noBorder,left:noBorder,right:noBorder};
+
+    const p = (text, opts={}) => new Paragraph({ alignment: opts.align||AlignmentType.LEFT, spacing:{after:opts.after||80}, children:[new TextRun({text, bold:opts.bold, size:opts.size||22, font:'Arial'})] });
+    const pCenter = (text, opts={}) => new Paragraph({ alignment:AlignmentType.CENTER, spacing:{after:opts.after||80}, children:[new TextRun({text, bold:opts.bold, size:opts.size||22, font:'Arial'})] });
+    const cell = (text, opts={}) => new TableCell({ borders, width:{size:opts.w||2000, type:WidthType.DXA}, shading:{fill:opts.fill||'FFFFFF',type:ShadingType.CLEAR}, verticalAlign: VerticalAlign.CENTER, margins:{top:60,bottom:60,left:100,right:100}, children:[new Paragraph({alignment:opts.align||AlignmentType.LEFT, children:[new TextRun({text,bold:opts.bold,size:20,font:'Arial'})]})] });
+
+    const headerRows = new Table({
+      width:{size:9360,type:WidthType.DXA},
+      columnWidths:[9360],
+      rows:[
+        new TableRow({children:[new TableCell({borders:noBorders, width:{size:9360,type:WidthType.DXA}, children:[
+          pCenter('ООО «ОПМ»',{bold:true,size:24}),
+          pCenter('ИНН: 7802540772, КПП 780201001',{size:18}),
+          pCenter('194292, Санкт-Петербург, 5-й Верхний пер, д. 17 лит. А, оф.211,212',{size:18}),
+          pCenter('+7 (812) 600-46-87',{size:18,after:160}),
+        ]})]}),
+      ]
+    });
+
+    // Main items table
+    const itemRows = [
+      new TableRow({children:[
+        cell('№',{w:400,bold:true,align:AlignmentType.CENTER}),
+        cell('Наименование товара',{w:3200,bold:true}),
+        cell('Ед.',{w:600,bold:true,align:AlignmentType.CENTER}),
+        cell('Кол-во',{w:900,bold:true,align:AlignmentType.CENTER}),
+        cell('Дефекты',{w:4260,bold:true}),
+      ]}),
+      ...failed.map((it,i)=>new TableRow({children:[
+        cell(String(i+1),{w:400,align:AlignmentType.CENTER}),
+        cell(it.name+(it.code?'\n('+it.code+')':''),{w:3200}),
+        cell(it.unit,{w:600,align:AlignmentType.CENTER}),
+        cell(String(it.qty),{w:900,align:AlignmentType.CENTER}),
+        cell([...it.defects, it.note].filter(Boolean).join('; ')||'—',{w:4260}),
+      ]}))
+    ];
+
+    // Conclusion checkboxes
+    const defectTypes = new Set(failed.flatMap(it=>it.defects));
+    const hasMark = [...defectTypes].some(d=>d.includes('клеймо')||d.includes('маркировк'));
+    const hasGeom = [...defectTypes].some(d=>d.includes('калибр')||d.includes('резьбы')||d.includes('допуска'));
+    const hasSurf = [...defectTypes].some(d=>d.includes('ржавчина')||d.includes('задир')||d.includes('покрыти'));
+    const hasPack = [...defectTypes].some(d=>d.includes('упаковки')||d.includes('фасовка'));
+
+    const children = [
+      headerRows,
+      pCenter('АКТ', {bold:true, size:28, after:40}),
+      pCenter('о выявленном несоответствии поставленной продукции', {bold:true, size:24, after:160}),
+      p(`Номер: ${actNum}`),
+      p(`Дата составления: ${dateStr}`),
+      p(`Место составления: ${place}`, {after:120}),
+      p(`Поставщик: ${state.supplier||'___________'}`, {after:60}),
+      p(`Покупатель: ${state.buyer||'ООО «ОПМ»'}`, {after:60}),
+      p(`Основание поставки: Заказ № ${state.order||'___________'} от ${dateStr}`, {after:120}),
+      p(`Объём партии: ${total.toLocaleString('ru')} шт. · Выборка ISO 3269 (AQL 1.0, ур. II): ${state.isoSample} шт.`, {after:120}),
+      p('Комиссия в составе:', {bold:true, after:60}),
+      p(`Начальник склада: ${cHead||'_______________'}`),
+      p(`Руководитель ОТК: ${cOtk||'_______________'}`),
+      p(`Специалист по претензиям: ${cClaim||'_______________'}`, {after:120}),
+      p('провела проверку поставленной продукции и установила следующее:', {after:120}),
+      new Table({width:{size:9360,type:WidthType.DXA}, columnWidths:[400,3200,600,900,4260], rows:itemRows}),
+      p(''),
+      p('Описание выявленного несоответствия:', {bold:true, after:60}),
+      p(failed.flatMap(it=>[...it.defects, it.note]).filter(Boolean).join('; ')||'', {after:160}),
+      p('Заключение комиссии:', {bold:true, after:80}),
+      new Table({
+        width:{size:9360,type:WidthType.DXA},
+        columnWidths:[4680,4680],
+        rows:[
+          new TableRow({children:[
+            cell((hasMark?'☒':'☐')+' Отсутствие/несоответствие маркировки',{w:4680}),
+            cell((hasPack?'☒':'☐')+' Нарушение упаковки',{w:4680}),
+          ]}),
+          new TableRow({children:[
+            cell((hasGeom?'☒':'☐')+' Нарушение геометрии / размеров',{w:4680}),
+            cell((hasSurf?'☒':'☐')+' Дефекты поверхности / покрытия',{w:4680}),
+          ]}),
+          new TableRow({children:[
+            cell('☐ Недопоставка',{w:4680}),
+            cell('☐ Иное: ________________',{w:4680}),
+          ]}),
+        ]
+      }),
+      p(''),
+      p('Приложения: фотоматериалы — см. ниже', {after:120}),
+      p('Подписи членов комиссии:', {bold:true, after:80}),
+      p(`Начальник склада: ______________________ ${cHead}`),
+      p(`Руководитель ОТК: ______________________`),
+      p(`Специалист по претензиям: ______________`),
+    ];
+
+    // Add photos
+    const photoItems = failed.filter(it=>it.photos.length);
+    if (photoItems.length) {
+      children.push(p(''));
+      children.push(p('ФОТОМАТЕРИАЛЫ', {bold:true, size:24, after:80}));
+      for (const it of photoItems) {
+        children.push(p(`${it.name}:`, {bold:true, after:40}));
+        for (const photoB64 of it.photos) {
+          try {
+            const base64 = photoB64.split(',')[1];
+            const isJpeg = photoB64.includes('jpeg')||photoB64.includes('jpg');
+            children.push(new Paragraph({
+              spacing:{after:80},
+              children:[new ImageRun({
+                data: base64,
+                transformation:{width:300,height:225},
+                type: isJpeg?'jpg':'png',
+              })]
+            }));
+          } catch(e) { /* skip bad photo */ }
+        }
+      }
+    }
+
+    const doc = new Document({
+      sections:[{
+        properties:{page:{size:{width:11906,height:16838},margin:{top:1134,right:1134,bottom:1134,left:1134}}},
+        children
+      }]
+    });
+
+    const buf = await Packer.toBuffer(doc);
+    const blob = new Blob([buf], {type:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'});
+    saveAs(blob, `Акт_несоответствия_${actNum}_${state.order||'б-н'}.docx`);
+    status.textContent = '✅ Документ скачан!';
+  } catch(e) {
+    status.textContent = '❌ Ошибка: '+e.message;
+    console.error(e);
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+// ─── HISTORY ────────────────────────────────────────────────────
+function saveToHistory() {
+  const records = JSON.parse(localStorage.getItem('qc-history')||'[]');
+  const rec = {
+    id: Date.now(),
+    date: new Date().toLocaleDateString('ru-RU'),
+    supplier: state.supplier,
+    order: state.order,
+    itemsTotal: state.items.length,
+    itemsFailed: state.items.filter(it=>it.status==='fail').length,
+    actNum: document.getElementById('act-num').value,
+  };
+  records.unshift(rec);
+  localStorage.setItem('qc-history', JSON.stringify(records.slice(0,50)));
+  showToast('Сохранено в историю');
+}
+
+function renderHistory() {
+  const records = JSON.parse(localStorage.getItem('qc-history')||'[]');
+  const el = document.getElementById('history-list');
+  if (!records.length) {
+    el.innerHTML = '<div style="text-align:center;color:var(--text2);padding:40px;font-size:13px;">Нет сохранённых актов</div>';
+    return;
+  }
+  el.innerHTML = records.map(r=>`
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <div>
+          <div style="font-weight:700;font-size:14px;">Акт № ${r.actNum}</div>
+          <div style="font-size:12px;color:var(--text2);">${r.date} · ${r.supplier||'—'}</div>
+          <div style="font-size:12px;color:var(--text2);">Заказ: ${r.order||'—'}</div>
+        </div>
+        <div style="text-align:right;">
+          <span class="badge badge-fail">${r.itemsFailed} брак</span>
+          <div style="font-size:11px;color:var(--text2);margin-top:4px;">${r.itemsTotal} позиций</div>
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
+// ─── UTILS ──────────────────────────────────────────────────────
+function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 2500);
+}
+
+// Drag & drop on scan
+const dd = document.getElementById('scan-drop');
+dd.addEventListener('dragover', e => { e.preventDefault(); dd.classList.add('drag'); });
+dd.addEventListener('dragleave', () => dd.classList.remove('drag'));
+dd.addEventListener('drop', e => {
+  e.preventDefault(); dd.classList.remove('drag');
+  const f = e.dataTransfer.files[0];
+  if (f) { document.getElementById('scan-file').files = e.dataTransfer.files; handleScanFile(document.getElementById('scan-file')); }
+});
+</script>
+</body>
+</html>
